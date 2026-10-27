@@ -1,0 +1,73 @@
+name: Atualizar navios na barra (TECON SANTOS)
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Execução planejada a cada 30 minutos (UTC). Pode sofrer atrasos.
+    - cron: '12,42 * * * *'
+
+concurrency:
+  group: tecon-santos-pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  coleta:
+    name: Coletar dados publicos
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Baixar codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+          sudo apt-get install -y xvfb
+
+      - name: Consultar Santos Brasil com navegador em tela virtual
+        run: xvfb-run -a python extrair_navios_barra.py
+
+      - name: Validar JSON antes de publicar
+        run: python validar_json.py
+
+      - name: Configurar GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Empacotar site e dados
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+      - name: Guardar diagnostico se a coleta falhar
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: diagnostico-coleta
+          path: diagnostico/
+          if-no-files-found: ignore
+          retention-days: 3
+
+  publicar:
+    name: Publicar site
+    needs: coleta
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Publicar no GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
