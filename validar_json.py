@@ -17,10 +17,16 @@ if not navios:
     raise SystemExit('ERRO: nenhuma linha confirmada; nao publicar vazio')
 if any(not isinstance(n,dict) or not n.get('navio') for n in navios):
     raise SystemExit('ERRO: navio sem nome')
+for navio in navios:
+    d=navio.get('prev_mov_descarga')
+    e=navio.get('prev_mov_embarque')
+    total=navio.get('total_movimentos')
+    if any(type(v) is not int or v<0 for v in (d,e,total)) or total != d+e:
+        raise SystemExit('ERRO: movimentos ausentes ou inconsistentes: '+navio['navio'])
 try:
     dt = datetime.fromisoformat(dados['consultado_em'])
     if dt.tzinfo is None:
         raise ValueError('sem fuso')
 except (KeyError, ValueError):
     raise SystemExit('ERRO: data de consulta invalida')
-print(f'OK: {len(navios)} navios; coletado em {dt.isoformat()}')
+print(f'OK: {len(navios)} navios com movimentos validados; coletado em {dt.isoformat()}')
