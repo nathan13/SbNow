@@ -11,7 +11,7 @@ header{background:#093456;color:#fff;display:flex;align-items:center;justify-con
 header small{text-transform:uppercase;letter-spacing:.12em;color:#b9d5e7;font-weight:700;font-size:11px}h1{margin:4px 0;font-size:clamp(20px,4vw,29px)}header p{color:#c4e0ee;font-size:13px;margin:0}
 .contador{font-size:25px;font-weight:800;background:#e5f3ff;color:#0c355b;padding:10px 14px;border-radius:40px}
 .meta{font-size:12px;color:#526b7f;display:flex;gap:15px;justify-content:space-between;flex-wrap:wrap;padding:13px 20px;background:#f3f8fc}
-table{width:100%;border-collapse:collapse}th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#5f7281;background:#f8fafc;text-align:left}th,td{padding:16px 20px;border-bottom:1px solid #e5edf3}td:first-child{font-weight:700}.situacao{background:#fff4b8;color:#715200;padding:6px 9px;border-radius:12px;font-size:12px;font-weight:700}
+.tabela-scroll{overflow-x:auto}table{width:100%;min-width:760px;border-collapse:collapse}th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#5f7281;background:#f8fafc;text-align:left}th,td{padding:16px 20px;border-bottom:1px solid #e5edf3}td:first-child{font-weight:700}.situacao{background:#fff4b8;color:#715200;padding:6px 9px;border-radius:12px;font-size:12px;font-weight:700}
 .aviso{text-align:center;color:#657687;padding:26px 14px;font-weight:400!important}.erro{color:#a41e25}.rodape{padding:14px 20px;font-size:12px;color:#64748b}.rodape a{color:#0b4f83}
 @media(max-width:570px){body{padding:5px}th,td{padding:12px 8px;font-size:12px}header{padding:17px 13px}.meta,.rodape{padding:12px 10px}}
 </style>
@@ -19,15 +19,17 @@ table{width:100%;border-collapse:collapse}th{font-size:12px;text-transform:upper
 <body>
 <main class="painel"><header><div><small>Monitoramento portuário</small><h1>Navios na barra</h1><p>TECON SANTOS · Santos Brasil</p></div><div class="contador" id="contagem">—</div></header>
 <div class="meta"><span id="coleta">Aguardando primeira coleta...</span><span>O painel verifica atualizações a cada 60 segundos</span></div>
-<table><thead><tr><th>Navio</th><th>Atracação prevista / efetiva</th><th>Situação</th></tr></thead><tbody id="linhas"><tr><td colspan="3" class="aviso">Aguardando dados reais...</td></tr></tbody></table>
-<div class="rodape">Fonte: <a href="https://www.santosbrasil.com.br/app/tcs/atracacao.asp#/app/_jx/lst.asp?lista=atracacao" target="_blank" rel="noopener noreferrer">Santos Brasil</a>. A data exibida é a publicada como <b>atracação prevista/efetiva</b>; não deve ser interpretada automaticamente como ETA. Última coleta pode não corresponder à última atualização da fonte.</div></main>
+<div class="tabela-scroll"><table><thead><tr><th>Navio</th><th>Atracação prevista / efetiva</th><th>Situação</th><th>Prev. Mov. Descarga</th><th>Prev. Mov. Embarque</th><th>Total de movimentos</th></tr></thead><tbody id="linhas"><tr><td colspan="6" class="aviso">Aguardando dados reais...</td></tr></tbody></table></div>
+<div class="rodape">Fonte: <a href="https://www.santosbrasil.com.br/app/tcs/atracacao.asp#/app/_jx/lst.asp?lista=atracacao" target="_blank" rel="noopener noreferrer">Santos Brasil</a>. A data exibida é a publicada como <b>atracação prevista/efetiva</b>; não deve ser interpretada automaticamente como ETA. Os movimentos são previstos pela fonte, não realizados; total = descarga + embarque. “—” significa informação não disponível, não zero. Última coleta pode não corresponder à última atualização da fonte.</div></main>
 <script>
 const tbody=document.getElementById('linhas'),coleta=document.getElementById('coleta'),contagem=document.getElementById('contagem');
 function cel(tr,t){let td=document.createElement('td');td.textContent=t==null||t===''?'—':String(t);tr.append(td)}
-function aviso(txt,err){tbody.replaceChildren();let tr=document.createElement('tr');let td=document.createElement('td');td.colSpan=3;td.className='aviso'+(err?' erro':'');td.textContent=txt;tr.append(td);tbody.append(tr)}
+function aviso(txt,err){tbody.replaceChildren();let tr=document.createElement('tr');let td=document.createElement('td');td.colSpan=6;td.className='aviso'+(err?' erro':'');td.textContent=txt;tr.append(td);tbody.append(tr)}
 async function atualizar(){try{let r=await fetch('./dados/navios_na_barra.json?'+Date.now(),{cache:'no-store'});if(!r.ok)throw Error('JSON indisponível (HTTP '+r.status+')');let d=await r.json();if(d.terminal!=='TECON SANTOS'||d.situacao!=='Na barra'||!Array.isArray(d.navios)||d.total!==d.navios.length)throw Error('Formato ou filtros não confirmados');
 let data=new Date(d.consultado_em);if(!Number.isFinite(data.getTime()))throw Error('Horário de coleta inválido');let idade=(Date.now()-data.getTime())/60000;coleta.textContent='Coletado em: '+data.toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'})+(idade>75?' · DADOS ANTIGOS':'');contagem.textContent=d.total;
-if(!d.navios.length){aviso('Nenhum navio na barra nesta consulta.',false);return}tbody.replaceChildren();for(let n of d.navios){let tr=document.createElement('tr');cel(tr,n.navio);cel(tr,n.data_atracacao_prevista_efetiva);let td=document.createElement('td'),tag=document.createElement('span');tag.className='situacao';tag.textContent='Na barra';td.append(tag);tr.append(td);tbody.append(tr)}
+if(!d.navios.length){aviso('Nenhum navio na barra nesta consulta.',false);return}tbody.replaceChildren();for(let n of d.navios){let tr=document.createElement('tr');cel(tr,n.navio);cel(tr,n.data_atracacao_prevista_efetiva);let td=document.createElement('td'),tag=document.createElement('span');tag.className='situacao';tag.textContent='Na barra';td.append(tag);tr.append(td);
+for(const chave of ['prev_mov_descarga','prev_mov_embarque','total_movimentos']) {const valor=n[chave];cel(tr,Number.isInteger(valor)&&valor>=0?valor.toLocaleString('pt-BR'):'—');}
+tbody.append(tr)}
 }catch(e){coleta.textContent='Não foi possível atualizar';contagem.textContent='—';aviso(e.message,true)}}
 atualizar();setInterval(atualizar,60000);
 </script>
