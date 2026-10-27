@@ -18,6 +18,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from playwright.sync_api import Error as PlaywrightError, sync_playwright
+from movimentos import ler_ficha
 
 URL = 'https://www.santosbrasil.com.br/app/tcs/atracacao.asp#/app/_jx/lst.asp?lista=atracacao'
 BASE = Path(__file__).resolve().parent
@@ -227,6 +228,45 @@ def main():
             if not navios:
                 raise RuntimeError('Não encontrei linhas de navio e data na tabela. Não vou publicar JSON vazio sem confirmação.')
 
+            # Para cada navio, abra a ficha separadamente e leia os movimentos.
+            # Falhas não geram valores fictícios e não sobrescrevem o JSON anterior.
+            evidencias=[]
+            for r in navios:
+                detalhe=page.context.new_page()
+                try:
+                    resposta_d=detalhe.goto(URL,wait_until='domcontentloaded',timeout=60000)
+                    detalhe.wait_for_timeout(1200)
+                    if detectar_bloqueio(detalhe,resposta_d):
+                        raise RuntimeError('Acesso negado ao abrir ficha de navio.')
+                    if not conferir_terminal(detalhe,limite=12):
+                        raise RuntimeError('TECON SANTOS não confirmado na ficha.')
+                    if not selecionar_option(detalhe,'Na barra',limite=12):
+                        raise RuntimeError('Filtro Na barra não encontrado na ficha.')
+                    linhas_d,terminal_d,situacao_d,_,_=esperar_dados(detalhe,segundos=12)
+                    nomes={normalizar(x['navio']) for x in linhas_d}
+                    if not terminal_d or not situacao_d or normalizar(r['navio']) not in nomes:
+                        raise RuntimeError('Navio não encontrado na ficha: '+r['navio'])
+                    movimentos,prova=ler_ficha(detalhe,r['navio'],espera=12)
+                    r.update(movimentos)
+                    evidencias.append(prova)
+                    print('Movimentos:',r['navio'],
+                          'Descarga:',r['prev_mov_descarga'],
+                          'Embarque:',r['prev_mov_embarque'],
+                          'Total:',r['total_movimentos'])
+                    if r['total_movimentos'] is None:
+                        try:
+                            detalhe.screenshot(path=str(DIAGNOSTICO/('ficha_'+str(len(evidencias))+'.png')),
+                                               full_page=True,timeout=6000)
+                        except PlaywrightError:
+                            pass
+                finally:
+                    detalhe.close()
+            gravar_atomico(DIAGNOSTICO/'fichas_movimentos.json',evidencias)
+            pendentes=[r['navio'] for r in navios if r.get('total_movimentos') is None]
+            if pendentes:
+                raise RuntimeError('Movimentos não confirmados de: '+', '.join(pendentes)+
+                                   '. Publicação anterior mantida.')
+
             agora=datetime.now(FUSO).isoformat(timespec='seconds')
             saida = {
                 'fonte': 'Santos Brasil — página pública',
@@ -238,7 +278,10 @@ def main():
                 'navios': [
                     {'navio': r['navio'],
                      'data_atracacao_prevista_efetiva': r['data_atracacao_prevista_efetiva'],
-                     'viagem': None, 'armador': None, 'situacao': 'Na barra'}
+                     'viagem': None, 'armador': None, 'situacao': 'Na barra',
+                     'prev_mov_descarga': r.get('prev_mov_descarga'),
+                     'prev_mov_embarque': r.get('prev_mov_embarque'),
+                     'total_movimentos': r.get('total_movimentos')}
                     for r in navios
                 ],
                 'nota': 'A data é a exibida na coluna DATA ATRACACAO PREVISTA / EFETIVA, não necessariamente o ETA.',
