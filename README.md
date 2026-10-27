@@ -16,7 +16,7 @@ O usuario confirmou que a coleta local com Chromium **visivel** funciona e que c
 4. Abra o repositorio > **Settings** > **Pages** > **Build and deployment** > **Source: GitHub Actions**.
 5. Abra **Actions** > workflow **Atualizar navios na barra (TECON SANTOS)** > **Run workflow**.
 6. Aguarde o workflow terminar. Se as etapas **Coletar dados publicos** e **Publicar site** ficarem verdes, abra o endereco exibido no ambiente `github-pages`. Exemplo de formato (substitua pelos dados reais): `https://USUARIO.github.io/REPOSITORIO/navios-na-barra.html`.
-7. O workflow esta configurado para executar a cada **30 minutos**, com atrasos possiveis conforme a disponibilidade dos executores GitHub. O site verifica atualizacoes do JSON a cada 60 segundos, mas isso NAO significa coletar dados da origem a cada minuto.
+7. O workflow esta configurado para executar a cada **10 minutos**, com atrasos possiveis conforme a disponibilidade dos executores GitHub. O site verifica atualizacoes do JSON a cada 60 segundos, mas isso NAO significa coletar dados da origem a cada minuto.
 
 Se a etapa de coleta falhar, o painel anterior publicado permanece no ar, com aviso visual quando os dados tiverem mais de 75 minutos. Para diagnostico: na execucao do workflow abra **Artifacts** e baixe `diagnostico-coleta` se existir, alem de ler o log `Consultar Santos Brasil com navegador em tela virtual`.
 
@@ -59,3 +59,9 @@ Visite http://localhost:8000/navios-na-barra.html. O GitHub Pages so sera public
 Nao e um problema do celular ou do seu site: o servidor de coleta nao conseguiu obter permissao para ler a origem. Ha duas opcoes sustentaveis: requisicao autorizada a API oficial ou dados provenientes de uma fonte cuja consulta automatica seja permitida. A requisicao interna `POST /app/_jx/lst.asp?lista=atracacao` encontrada no diagnostico anterior ainda nao foi validada para execucao autonomamente em nuvem.
 
 **Limite conhecido:** o coletor atual nao confirma uma tabela legitimamente vazia: se nao houver navios, ele deixa de publicar novos dados para evitar falsos resultados. Essa situacao exigira aperfeicoar o detector de lista vazia.
+
+## Movimentos previstos por navio
+
+Depois de filtrar TECON SANTOS → Na barra, o extrator abre a ficha de cada navio e lê os campos públicos **Prev. Mov. Descarga** e **Prev. Mov. Embarque**. O JSON contém `prev_mov_descarga`, `prev_mov_embarque` e `total_movimentos` (soma dos dois), além de nome e data de atracação.
+
+Os campos são **previsões de movimentos**, não movimentos efetivamente realizados nem necessariamente TEUs. Se a ficha não for legível, a publicação falha e mantém a última versão publicada, sem substituir valores ausentes por zero. Os dados diagnósticos ficam em `diagnostico/fichas_movimentos.json` e `diagnostico/ficha_N.png` quando houver falhas. O painel é responsivo, com rolagem horizontal da tabela no celular.
