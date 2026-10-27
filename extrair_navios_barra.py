@@ -181,7 +181,8 @@ def main():
 
     with sync_playwright() as p:
         browser=p.chromium.launch(headless=args.headless)
-        page=browser.new_page(viewport={'width':1440,'height':900},locale='pt-BR',timezone_id='America/Sao_Paulo')
+        context=browser.new_context(viewport={'width':1440,'height':900},locale='pt-BR',timezone_id='America/Sao_Paulo')
+        page=context.new_page()
         try:
             print('Abrindo:', URL)
             resposta = page.goto(URL, wait_until='domcontentloaded', timeout=60000)
