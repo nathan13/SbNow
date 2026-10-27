@@ -3,8 +3,8 @@ name: Atualizar navios na barra (TECON SANTOS)
 on:
   workflow_dispatch:
   schedule:
-    # Execução planejada a cada 30 minutos (UTC). Pode sofrer atrasos.
-    - cron: '12,42 * * * *'
+    # Execução planejada a cada 10 minutos (UTC), evitando o início da hora. Pode sofrer atrasos.
+    - cron: '7,17,27,37,47,57 * * * *'
 
 concurrency:
   group: tecon-santos-pages
