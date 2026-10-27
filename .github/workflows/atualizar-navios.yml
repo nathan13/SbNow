@@ -1,18 +1,8 @@
 name: Atualizar navios na barra (TECON SANTOS)
 
+# Atualizacoes automaticas pausadas a pedido do usuario.
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/atualizar-navios.yml'
-      - 'extrair_navios_barra.py'
-      - 'movimentos.py'
-      - 'validar_json.py'
-      - 'site/**'
-  schedule:
-    # Execução planejada a cada 10 minutos (UTC), evitando o início da hora. Pode sofrer atrasos.
-    - cron: '7,17,27,37,47,57 * * * *'
 
 concurrency:
   group: tecon-santos-pages
